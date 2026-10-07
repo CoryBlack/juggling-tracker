@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Juggling Log</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Juggling">
+<meta name="theme-color" content="#14141e">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <h1 id="pageTitle">Juggling Log</h1>
+  <div class="top-actions">
+    <div id="syncStatus"><span class="dot"></span><span id="syncStatusText">—</span></div>
+    <button class="icon-btn" id="settingsBtn" aria-label="Settings">⚙︎</button>
+  </div>
+</header>
+
+<main>
+
+  <div class="tab-row" id="mainTabs">
+    <button type="button" class="tab-btn" data-tab="train" id="trainTabBtn">Train</button>
+    <button type="button" class="tab-btn" data-tab="priorities">Priorities</button>
+    <button type="button" class="tab-btn" data-tab="progress">Progress</button>
+    <button type="button" class="tab-btn" data-tab="history">History</button>
+  </div>
+
+  <!-- TRAIN VIEW -->
+  <section id="view-train">
+    <div id="trainEmptyState" class="empty-state" hidden>
+      No practice in progress yet today.
+      <div style="margin-top:16px;">
+        <button type="button" class="btn primary block" id="startPracticeBtn" style="max-width:260px;margin:0 auto;">Start Practice</button>
+      </div>
+    </div>
+    <div id="trainActive" hidden>
+      <div class="btn-row" style="justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <div class="train-date" id="trainDateLabel"></div>
+        <button type="button" class="btn small danger" id="discardSessionBtn">Discard</button>
+      </div>
+      <h3 class="section-label">Today's Practice</h3>
+      <div id="sessionTrickList"></div>
+      <button type="button" class="btn block" id="addTrickToSessionBtn" style="margin-top:4px;">+ Add Trick</button>
+      <div class="divider"></div>
+      <button type="button" class="btn primary block" id="finishPracticeBtn">Finish Practice</button>
+    </div>
+  </section>
+
+  <!-- ADD TRICK TO SESSION -->
+  <section id="view-add-trick" hidden>
+    <button type="button" class="btn small" id="backFromAddTrick">‹ Back</button>
+    <h2 style="margin-top:14px;">Add a Trick</h2>
+    <div class="field suggest-wrap" id="trickPickerWrap" style="margin-top:14px;">
+      <label for="trickPicker">Search your library or add new</label>
+      <input type="text" id="trickPicker" placeholder="e.g. 5 Clubs" autocomplete="off">
+      <div class="suggest-list" id="trickSuggestions" hidden></div>
+    </div>
+    <div id="newTrickFields" hidden>
+      <p class="hint" style="margin-bottom:12px;">No trick named "<span id="newTrickNamePreview"></span>" yet — set it up:</p>
+      <div class="field">
+        <label for="newTrickCategory">Category (optional)</label>
+        <select id="newTrickCategory"><option value="">None</option></select>
+      </div>
+      <div class="field">
+        <label for="newTrickUnit">Measured in</label>
+        <select id="newTrickUnit">
+          <option value="catches">catches</option>
+          <option value="reps">reps</option>
+          <option value="seconds">seconds</option>
+          <option value="successful attempts">successful attempts</option>
+          <option value="rounds">rounds</option>
+          <option value="__custom">Custom…</option>
+        </select>
+        <input type="text" id="newTrickUnitCustom" placeholder="Custom unit name" hidden style="margin-top:8px;">
+      </div>
+      <button type="button" class="btn primary block" id="createNewTrickBtn">Add to Library &amp; Session</button>
+    </div>
+  </section>
+
+  <!-- TRICK LOGGING VIEW -->
+  <section id="view-trick-log" hidden>
+    <button type="button" class="btn small" id="backFromTrickLog">‹ Back</button>
+    <h2 id="trickLogTitle" style="margin-top:14px;"></h2>
+    <div id="trickLogLastSession"></div>
+
+    <div class="divider"></div>
+
+    <h3 class="section-label" style="margin-top:0;">Today</h3>
+    <div class="field">
+      <label for="trickBestInput">Best result today <span id="trickLogUnitLabel"></span></label>
+      <input type="number" inputmode="decimal" id="trickBestInput" placeholder="optional">
+      <p class="hint pr-hint" id="trickPrIndicator" hidden>🎉 New PB!</p>
+    </div>
+
+    <div id="goalBox"></div>
+
+    <div class="field">
+      <label for="trickNotesInput">Notes</label>
+      <textarea id="trickNotesInput" rows="3" placeholder="How did it feel today? (optional)"></textarea>
+    </div>
+
+    <button type="button" class="btn primary block" id="doneWithTrickBtn">Done</button>
+  </section>
+
+  <!-- FINISH / SUMMARY VIEW -->
+  <section id="view-finish" hidden>
+    <button type="button" class="btn small" id="backFromFinish">‹ Back</button>
+    <h2 style="margin-top:14px;" id="finishTitle"></h2>
+    <div id="finishSummary"></div>
+    <button type="button" class="btn primary block" id="savePracticeBtn" style="margin-top:16px;">Save Practice</button>
+  </section>
+
+  <!-- PRIORITIES VIEW -->
+  <section id="view-priorities" hidden>
+    <div id="prioritiesList"></div>
+    <button type="button" class="btn block" id="addPriorityBtn" style="margin-top:14px;">+ Add Priority</button>
+  </section>
+
+  <!-- ADD PRIORITY VIEW -->
+  <section id="view-add-priority" hidden>
+    <button type="button" class="btn small" id="backFromAddPriority">‹ Back</button>
+    <h2 style="margin-top:14px;">Add a Priority</h2>
+    <div class="field" style="margin-top:14px;">
+      <input type="text" id="prioritySearch" placeholder="Search tricks…" autocomplete="off">
+    </div>
+    <div id="priorityPickList"></div>
+  </section>
+
+  <!-- PROGRESS VIEW -->
+  <section id="view-progress" hidden>
+    <div class="field">
+      <input type="text" id="progressSearch" placeholder="Search tricks…" autocomplete="off">
+    </div>
+    <div id="progressTrickList"></div>
+  </section>
+
+  <!-- PROGRESS DETAIL VIEW -->
+  <section id="view-progress-detail" hidden>
+    <button type="button" class="btn small" id="backFromProgressDetail">‹ Back</button>
+    <h2 id="progressDetailTitle" style="margin-top:14px;"></h2>
+    <div id="progressDetailStats"></div>
+    <button type="button" class="btn primary block" id="startTrainingFromProgressBtn" style="margin:14px 0 20px;">Start Training This</button>
+    <h3 class="section-label">History</h3>
+    <div id="progressDetailHistory"></div>
+  </section>
+
+  <!-- HISTORY VIEW -->
+  <section id="view-history" hidden>
+    <div id="historyList"></div>
+  </section>
+
+  <!-- HISTORY DETAIL VIEW -->
+  <section id="view-history-detail" hidden>
+    <button type="button" class="btn small" id="backFromHistoryDetail">‹ Back</button>
+    <div id="historyDetailContent" style="margin-top:12px;"></div>
+    <div class="btn-row">
+      <button type="button" class="btn danger" id="deleteSessionBtn">Delete Practice</button>
+    </div>
+  </section>
+
+  <!-- SETTINGS VIEW -->
+  <section id="view-settings" hidden>
+    <button type="button" class="btn small" id="backFromSettings">‹ Back</button>
+
+    <div class="settings-block" style="margin-top:16px;">
+      <h3>GitHub Sync</h3>
+      <div class="field">
+        <label for="ghUser">GitHub username</label>
+        <input type="text" id="ghUser" placeholder="e.g. crblk99">
+      </div>
+      <div class="field">
+        <label for="ghRepo">Data repo name</label>
+        <input type="text" id="ghRepo" placeholder="e.g. juggling-data">
+      </div>
+      <div class="field">
+        <label for="ghBranch">Branch</label>
+        <input type="text" id="ghBranch" placeholder="main">
+      </div>
+      <div class="field">
+        <label for="ghToken">Personal access token</label>
+        <input type="text" id="ghToken" placeholder="github_pat_…" autocapitalize="off" autocorrect="off" spellcheck="false">
+        <p class="hint">Fine-grained token, scoped only to the data repo above, with Contents: Read and write permission. Stored only in this browser — never sent anywhere but api.github.com.</p>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn primary" id="saveSettingsBtn">Save</button>
+        <button type="button" class="btn" id="syncNowBtn">Sync Now</button>
+      </div>
+      <p class="hint" id="settingsStatus"></p>
+    </div>
+
+    <div class="settings-block">
+      <h3>Trick Library</h3>
+      <div class="field">
+        <input type="text" id="librarySearch" placeholder="Search library…" autocomplete="off">
+      </div>
+      <div id="trickLibraryManager"></div>
+      <button type="button" class="btn small" id="addLibraryTrickBtn" style="margin-top:10px;">+ New Trick</button>
+    </div>
+
+    <div class="settings-block">
+      <h3>Categories</h3>
+      <div id="categoryManager"></div>
+      <div class="field" style="margin-top:10px;">
+        <input type="text" id="newCategoryInput" placeholder="New category name">
+      </div>
+      <button type="button" class="btn small" id="addCategoryBtn">+ Add Category</button>
+    </div>
+
+    <div class="settings-block">
+      <h3>Backup</h3>
+      <button type="button" class="btn block" id="exportBtn">Export JSON</button>
+      <p class="hint">Downloads a copy of all your data as a file, as a manual safety net.</p>
+    </div>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
