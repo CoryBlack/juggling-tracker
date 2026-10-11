@@ -226,6 +226,61 @@ function formatRelative(iso) {
   return formatDate(iso);
 }
 
+// Short form used in stat bars, e.g. "Oct 6".
+function formatDateShort(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+function dateToISO(dt) {
+  return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
+}
+
+// Monday of the calendar week containing the given date (ISO in, ISO out).
+function getWeekStartISO(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  const day = dt.getDay(); // 0 = Sun .. 6 = Sat
+  const diff = (day === 0 ? -6 : 1) - day;
+  dt.setDate(dt.getDate() + diff);
+  return dateToISO(dt);
+}
+
+function formatDuration(minutes) {
+  if (!minutes || minutes <= 0) return null;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
+}
+
+// This calendar week (Monday through today, inclusive) across all saved sessions.
+function weekStats() {
+  const today = todayISO();
+  const weekStart = getWeekStartISO(today);
+  const sessionsThisWeek = state.sessions.filter(s => s.date >= weekStart && s.date <= today);
+  const totalMinutes = sessionsThisWeek.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
+  return { totalMinutes, count: sessionsThisWeek.length, weekStart };
+}
+
+function renderWeekStatBar() {
+  const { totalMinutes, count, weekStart } = weekStats();
+  const since = `since ${formatDateShort(weekStart)}`;
+  let html;
+  if (count === 0) {
+    html = `This week (${since}): no practices logged yet`;
+  } else if (totalMinutes > 0) {
+    html = `This week (${since}): <strong>${formatDuration(totalMinutes)}</strong> · ${count} session${count === 1 ? '' : 's'}`;
+  } else {
+    html = `This week (${since}): ${count} session${count === 1 ? '' : 's'} · no time logged`;
+  }
+  document.querySelectorAll('.week-stat-bar').forEach(el => { el.innerHTML = html; });
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -299,6 +354,7 @@ function unitOptionsHtml(selected) {
 // TRAIN
 // =====================================================================
 function renderTrain() {
+  renderWeekStatBar();
   const hasSession = !!currentSession;
   document.getElementById('trainEmptyState').hidden = hasSession;
   document.getElementById('trainActive').hidden = !hasSession;
@@ -309,7 +365,14 @@ function renderTrain() {
 }
 
 function startNewSession() {
-  currentSession = { id: uuid(), date: todayISO(), startedAt: new Date().toISOString(), entries: [] };
+  currentSession = {
+    id: uuid(),
+    date: todayISO(),
+    startedAt: new Date().toISOString(),
+    durationMinutes: null,
+    durationManuallySet: false,
+    entries: []
+  };
   saveDraft();
   updateTrainTabLabel();
   renderTrain();
@@ -594,6 +657,21 @@ function renderGoalBox() {
 function openFinishView() {
   if (!currentSession.entries.length) { alert('Add at least one trick before finishing.'); return; }
   document.getElementById('finishTitle').textContent = formatDate(currentSession.date) + ' Practice';
+
+  const hoursInput = document.getElementById('finishHoursInput');
+  const minutesInput = document.getElementById('finishMinutesInput');
+  if (!currentSession.durationManuallySet) {
+    // No explicit entry yet — default to actual elapsed time since the session started,
+    // so the common case ("I just trained for a while") needs no typing at all.
+    const elapsed = currentSession.startedAt
+      ? Math.max(0, Math.round((Date.now() - new Date(currentSession.startedAt).getTime()) / 60000))
+      : 0;
+    currentSession.durationMinutes = elapsed || null;
+  }
+  const total = currentSession.durationMinutes || 0;
+  hoursInput.value = total ? Math.floor(total / 60) : '';
+  minutesInput.value = total ? total % 60 : '';
+
   const box = document.getElementById('finishSummary');
   box.innerHTML = currentSession.entries.map(e => {
     const trick = getTrick(e.trickId);
@@ -630,6 +708,7 @@ function savePractice() {
     date: currentSession.date,
     startedAt: currentSession.startedAt,
     finishedAt: new Date().toISOString(),
+    durationMinutes: currentSession.durationMinutes || null,
     entries: snapshotEntries
   };
   state.sessions.push(session);
@@ -825,16 +904,20 @@ function startTrainingFromProgress() {
 // HISTORY
 // =====================================================================
 function renderHistoryList() {
+  renderWeekStatBar();
   const box = document.getElementById('historyList');
   const sessions = sortedSessions();
   if (!sessions.length) {
     box.innerHTML = `<div class="empty-state">No practices logged yet.<br>Tap Train to get started.</div>`;
     return;
   }
-  box.innerHTML = sessions.map(s => `<div class="card tappable" data-id="${s.id}">
-    <div class="card-top"><div class="card-title">${formatDate(s.date)}</div></div>
-    <div class="card-summary">${s.entries.length} skill${s.entries.length === 1 ? '' : 's'} trained — ${escapeHtml(s.entries.map(e => e.name).join(', '))}</div>
-  </div>`).join('');
+  box.innerHTML = sessions.map(s => {
+    const durText = formatDuration(s.durationMinutes);
+    return `<div class="card tappable" data-id="${s.id}">
+      <div class="card-top"><div class="card-title">${formatDate(s.date)}</div>${durText ? `<div class="card-sub">${durText}</div>` : ''}</div>
+      <div class="card-summary">${s.entries.length} skill${s.entries.length === 1 ? '' : 's'} trained — ${escapeHtml(s.entries.map(e => e.name).join(', '))}</div>
+    </div>`;
+  }).join('');
   box.querySelectorAll('[data-id]').forEach(card => card.addEventListener('click', () => openHistoryDetail(card.dataset.id)));
 }
 
@@ -843,8 +926,20 @@ function openHistoryDetail(id) {
   const s = state.sessions.find(x => x.id === id);
   if (!s) return;
   const box = document.getElementById('historyDetailContent');
+  const durMinutes = s.durationMinutes || 0;
   box.innerHTML = `<h2>${formatDate(s.date)}</h2>
     <p class="hint" style="margin-bottom:16px;">${s.entries.length} skill${s.entries.length === 1 ? '' : 's'} trained</p>
+    <h3 class="section-label" style="margin-top:0;">Session Length</h3>
+    <div class="two-col" style="max-width:280px;">
+      <div class="field">
+        <label for="historyDurationHours">Hours</label>
+        <input type="number" inputmode="numeric" id="historyDurationHours" placeholder="0" min="0" value="${durMinutes ? Math.floor(durMinutes / 60) : ''}">
+      </div>
+      <div class="field">
+        <label for="historyDurationMinutes">Minutes</label>
+        <input type="number" inputmode="numeric" id="historyDurationMinutes" placeholder="0" min="0" max="59" value="${durMinutes ? durMinutes % 60 : ''}">
+      </div>
+    </div>
     <div class="workout-detail">
     ${s.entries.map(e => {
       let html = `<div class="ex-row"><div class="ex-name">${escapeHtml(e.name)}</div>`;
@@ -858,7 +953,21 @@ function openHistoryDetail(id) {
       return html;
     }).join('')}
     </div>`;
+  document.getElementById('historyDurationHours').addEventListener('change', onHistoryDurationChange);
+  document.getElementById('historyDurationMinutes').addEventListener('change', onHistoryDurationChange);
   showView('view-history-detail');
+}
+
+function onHistoryDurationChange() {
+  const s = state.sessions.find(x => x.id === openHistorySessionId);
+  if (!s) return;
+  const h = Number(document.getElementById('historyDurationHours').value) || 0;
+  const m = Number(document.getElementById('historyDurationMinutes').value) || 0;
+  const total = h * 60 + m;
+  s.durationMinutes = total || null;
+  saveLocalData();
+  renderWeekStatBar();
+  persist();
 }
 
 // =====================================================================
@@ -1140,6 +1249,15 @@ function wireEvents() {
   // Finish
   document.getElementById('backFromFinish').addEventListener('click', () => showView('view-train'));
   document.getElementById('savePracticeBtn').addEventListener('click', savePractice);
+  const onFinishDurationInput = () => {
+    const h = Number(document.getElementById('finishHoursInput').value) || 0;
+    const m = Number(document.getElementById('finishMinutesInput').value) || 0;
+    currentSession.durationMinutes = (h * 60 + m) || null;
+    currentSession.durationManuallySet = true;
+    saveDraft();
+  };
+  document.getElementById('finishHoursInput').addEventListener('input', onFinishDurationInput);
+  document.getElementById('finishMinutesInput').addEventListener('input', onFinishDurationInput);
 
   // Priorities
   document.getElementById('addPriorityBtn').addEventListener('click', openAddPriorityView);

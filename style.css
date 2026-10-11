@@ -232,10 +232,25 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-dim)
 
 .pr-hint { color: var(--gold); font-weight: 700; font-size: 13.5px; }
 
+/* ---------- Shared two-column field layout ---------- */
+.two-col { display: flex; gap: 10px; }
+.two-col .field { flex: 1; margin-bottom: 10px; }
+
+/* ---------- Weekly stat bar (Train / History) ---------- */
+.week-stat-bar {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 14px;
+  text-align: center;
+}
+.week-stat-bar strong { color: var(--accent); }
+
 /* ---------- Goal / set tracker ---------- */
 .goal-setup { margin-bottom: 16px; }
-.goal-setup .two-col { display: flex; gap: 10px; }
-.goal-setup .two-col .field { flex: 1; margin-bottom: 10px; }
 
 .goal-active {
   background: var(--bg-elev);

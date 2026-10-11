@@ -34,6 +34,7 @@
 
   <!-- TRAIN VIEW -->
   <section id="view-train">
+    <div class="week-stat-bar"></div>
     <div id="trainEmptyState" class="empty-state" hidden>
       No practice in progress yet today.
       <div style="margin-top:16px;">
@@ -113,6 +114,19 @@
   <section id="view-finish" hidden>
     <button type="button" class="btn small" id="backFromFinish">‹ Back</button>
     <h2 style="margin-top:14px;" id="finishTitle"></h2>
+
+    <h3 class="section-label" style="margin-top:4px;">Session Length (optional)</h3>
+    <div class="two-col">
+      <div class="field">
+        <label for="finishHoursInput">Hours</label>
+        <input type="number" inputmode="numeric" id="finishHoursInput" placeholder="0" min="0">
+      </div>
+      <div class="field">
+        <label for="finishMinutesInput">Minutes</label>
+        <input type="number" inputmode="numeric" id="finishMinutesInput" placeholder="0" min="0" max="59">
+      </div>
+    </div>
+
     <div id="finishSummary"></div>
     <button type="button" class="btn primary block" id="savePracticeBtn" style="margin-top:16px;">Save Practice</button>
   </section>
@@ -153,6 +167,7 @@
 
   <!-- HISTORY VIEW -->
   <section id="view-history" hidden>
+    <div class="week-stat-bar"></div>
     <div id="historyList"></div>
   </section>
 
